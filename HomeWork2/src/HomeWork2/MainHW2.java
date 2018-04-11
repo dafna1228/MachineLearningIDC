@@ -48,6 +48,7 @@ public class MainHW2 {
 		DecisionTree entropyTree = new DecisionTree();
 		entropyTree.setGiniImpurity(false);
 		entropyTree.buildClassifier(trainingCancer);
+		entropyTree.printTree();
 
 		// Calculate the average error on the validation set.
 		double entropyErr = entropyTree.calcAvgError(validationCancer);

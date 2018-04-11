@@ -13,9 +13,10 @@ class Node {
 	Node[] children;
 	Node parent;
 	int attributeIndex;
-	String attributeValue;
+	int attributeValueIndex;
 	double returnValue;
 	Instances data;
+	int height;
 }
 
 public class DecisionTree implements Classifier {
@@ -42,22 +43,27 @@ public class DecisionTree implements Classifier {
 		// initialize rootNode
 		rootNode.data = data;
 		rootNode.returnValue = getReturnValue(rootNode.data);
+		rootNode.height = 0;
 		queue.add(rootNode);
 		while ( !queue.isEmpty()){
 			Node currNode = queue.remove();
 			// If training examples in n are not perfectly classified-
 			if (calcClassVal1Ratio(currNode.data) % 1.0 != 0.0 ) {
 				// Assign the decision attribute for the node data
-				int decisionAttr = getDecisionAttr(currNode.data);
-				int attrNumVal = currNode.data.attribute(decisionAttr).numValues();
+				int decisionAttrIndex = getDecisionAttr(currNode.data);
+				currNode.attributeIndex = decisionAttrIndex;
+				Attribute decisionAttr = currNode.data.attribute(decisionAttrIndex);
+				int attrNumVal = decisionAttr.numValues();
 				Node[] currChildren = new Node[attrNumVal];
 				// For each value of decisionAttr, create a new descendant of the node
 				for (int i = 0; i < attrNumVal; i++){
 					Node childNode = new Node();
 					childNode.parent = currNode;
-					childNode.attributeIndex = decisionAttr;
+					// childNode.attributeIndex = decisionAttr;
 					childNode.data = new Instances(data,0);
-					childNode.attributeValue = currNode.data.attribute(decisionAttr).value(i);
+					String attributeValue = decisionAttr.value(i);
+					childNode.attributeValueIndex = decisionAttr.indexOfValue(attributeValue);
+					childNode.height = currNode.height + 1;
 					currChildren[i] = childNode;
 				}
 				// Distribute training examples to descendant nodes
@@ -65,7 +71,8 @@ public class DecisionTree implements Classifier {
 					Instance instance = currNode.data.instance(i);
 					String value = instance.stringValue(decisionAttr);
 					for (int j = 0; j < attrNumVal; j++){
-						if (value.equals(data.attribute(decisionAttr).value(j))){
+					    // if the index of this instance's decisionAttr value is equal to the attributeValueIndex of this child
+                        if (currChildren[j].attributeValueIndex == decisionAttr.indexOfValue(value)){
 							currChildren[i].data.add(instance);
 						}
 					}
@@ -94,7 +101,8 @@ public class DecisionTree implements Classifier {
 			// set currNode as the child of currNode that has the attribute value same as the instance
 			for(int i = 0; i < currNode.children.length; i++) {
 				String instanceAttrValue = instance.stringValue(currNode.attributeIndex);
-				if (instanceAttrValue.equals(currNode.children[i].attributeValue)){
+				int instanceAttrValueIndex = currNode.data.attribute(currNode.attributeIndex).indexOfValue(instanceAttrValue);
+				if (instanceAttrValueIndex == currNode.children[i].attributeValueIndex){
 					currNode = currNode.children[i];
 				}
 			}
@@ -227,6 +235,43 @@ public class DecisionTree implements Classifier {
 		}
 		return retAttr;
 	}
+
+    void printTree() {
+	    recursivePreorderTree(rootNode);
+    }
+
+	// print the tree with recursive preorder algorithm
+    void recursivePreorderTree(Node node)
+    {
+        // first print data of node
+        printNode(node);
+
+        if (node.children.length == 0) {
+            return;
+        }
+        // then recur on left sutree
+        recursivePreorderTree(node.children[0]);
+        // now recur on right subtree
+        recursivePreorderTree(node.children[node.children.length - 1]);
+    }
+
+    void printNode(Node node)
+    {
+        // create the tab indentation- 4*node.height spaces
+        String spaces = String.format("%"+(node.height*4)+"s", "");
+        //String spaces = String.format("%1$#"+(node.height*4)+"s", "");
+        if (node.height == 0) {
+            System.out.println("Root");
+        } else {
+            System.out.println(spaces + "if attribute " + node.parent.attributeIndex + " = " + node.attributeValueIndex);
+        }
+        if (node.children.length == 0) {
+            System.out.println(spaces + "leaf. Returning value: " + node.returnValue);
+        } else {
+            System.out.println(spaces + "Returning value: " + node.returnValue);
+        }
+
+    }
 
 	@Override
 	public double[] distributionForInstance(Instance arg0) throws Exception {
