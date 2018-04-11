@@ -16,7 +16,6 @@ class Node {
 	String attributeValue;
 	double returnValue;
 	Instances data;
-	//
 }
 
 public class DecisionTree implements Classifier {
@@ -32,7 +31,7 @@ public class DecisionTree implements Classifier {
 	// Input: Instances object.
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
-		rootNode.data = data;
+
 		buildTree(data);
 	}
 
@@ -40,26 +39,25 @@ public class DecisionTree implements Classifier {
 	// Input: Instances object (probably the training data set or subset in a recursive method).
 	public void buildTree(Instances data) throws Exception {
 		Queue<Node> queue = new LinkedList<Node>();
+		// initialize rootNode
+		rootNode.data = data;
+		rootNode.returnValue = getReturnValue(rootNode.data);
 		queue.add(rootNode);
 		while ( !queue.isEmpty()){
-			Node currNode = queue.peek();
-			// If training examples in n are perfectly classified-
-			// Then mark node as complete and continue to next node in Q
-			if (currNode.data.numInstances() == 0) {
-				queue.remove();
-			} else {
+			Node currNode = queue.remove();
+			// If training examples in n are not perfectly classified-
+			if (calcClassVal1Ratio(currNode.data) % 1.0 != 0.0 ) {
 				// Assign the decision attribute for the node data
 				int decisionAttr = getDecisionAttr(currNode.data);
 				int attrNumVal = currNode.data.attribute(decisionAttr).numValues();
 				Node[] currChildren = new Node[attrNumVal];
-				// For each boundary value of decisionAttr, create a new descendant of the node
+				// For each value of decisionAttr, create a new descendant of the node
 				for (int i = 0; i < attrNumVal; i++){
 					Node childNode = new Node();
 					childNode.parent = currNode;
 					childNode.attributeIndex = decisionAttr;
 					childNode.data = new Instances(data,0);
 					childNode.attributeValue = currNode.data.attribute(decisionAttr).value(i);
-					childNode.returnValue = ;// the class value with the most instances?
 					currChildren[i] = childNode;
 				}
 				// Distribute training examples to descendant nodes
@@ -72,12 +70,14 @@ public class DecisionTree implements Classifier {
 						}
 					}
 				}
-				currNode.children = currChildren;
-
 				// Insert all (non empty) descendant nodes to Q
 				for (int i = 0; i < attrNumVal; i++){
-					queue.add(currChildren[i]);
+					if (currChildren[i].data.numInstances() > 0) {
+						currChildren[i].returnValue = getReturnValue(currChildren[i].data);
+						queue.add(currChildren[i]);
+					}
 				}
+				currNode.children = currChildren;
 			}
 		}
 	}
@@ -158,7 +158,7 @@ public class DecisionTree implements Classifier {
 	}
 
 
-		// Calculates the Entropy of a random variable.
+	// Calculates the Entropy of a random variable.
 	// Input: A set of probabilities (the fraction of each possible value in the tested set).
 	// Output: The Entropy (double).
 	public double calcEntropy(double[] prob) {
@@ -167,6 +167,28 @@ public class DecisionTree implements Classifier {
 			retEntropy =- prob[i] * (Math.log(prob[i])/Math.log(2));
 		}
 		return retEntropy;
+	}
+
+	// Calculates the return value of the node
+	// Input: the instances of this node
+	// Output: 1 or 0 (double).
+	public double getReturnValue(Instances data) {
+		double classVal1Ratio = calcClassVal1Ratio(data);
+		return (( classVal1Ratio > 0.5) ? 1.0 :  0.0);
+	}
+
+	// Calculates the num of instances with return value 1 / num of instances
+	// Input: the instances of this node
+	// Output: 1 or 0 (double).
+	public double calcClassVal1Ratio(Instances data) {
+		int count1 = 0;
+		// count the num of instances that have value 1
+		for (int i=0; i< data.numInstances(); i++){
+			if (data.instance(i).classValue() == 1.0) {
+				count1++;
+			}
+		}
+		return ((double) count1 / (double) data.numInstances());
 	}
 
 	// Calculates the Gini of a random variable.
