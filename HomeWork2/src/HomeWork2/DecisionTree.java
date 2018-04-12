@@ -1,10 +1,7 @@
 package HomeWork2;
 
 import weka.classifiers.Classifier;
-import weka.core.Attribute;
-import weka.core.AttributeStats;
-import weka.core.Instance;
-import weka.core.Instances;
+import weka.core.*;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -20,7 +17,7 @@ class Node {
 }
 
 public class DecisionTree implements Classifier {
-	private Node rootNode;
+	private Node rootNode = new Node();
 	private boolean giniImpurity = false;
 
 	public void setGiniImpurity(boolean isGini) {
@@ -32,7 +29,6 @@ public class DecisionTree implements Classifier {
 	// Input: Instances object.
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
-
 		buildTree(data);
 	}
 
@@ -45,14 +41,22 @@ public class DecisionTree implements Classifier {
 		rootNode.returnValue = getReturnValue(rootNode.data);
 		rootNode.height = 0;
 		queue.add(rootNode);
+		int count = 0;
 		while ( !queue.isEmpty()){
+			//System.out.println("q size: " + queue.size());
 			Node currNode = queue.remove();
 			// If training examples in n are not perfectly classified-
-			if (calcClassVal1Ratio(currNode.data) % 1.0 != 0.0 ) {
+//			for (int i = 0; i < currNode.data.numInstances(); i++) {
+//				System.out.println(currNode.data.instance(i));
+//			}
+			// check stopping condition- If training examples in n are not perfectly classified,
+			// or all the instances in data have the same value fot all attributes
+			if ((calcClassVal1Ratio(currNode.data) % 1.0 != 0.0) && (!dataHasSameValForAllAttr(currNode.data)) ) {
 				// Assign the decision attribute for the node data
 				int decisionAttrIndex = getDecisionAttr(currNode.data);
 				currNode.attributeIndex = decisionAttrIndex;
 				Attribute decisionAttr = currNode.data.attribute(decisionAttrIndex);
+				//System.out.println("decision attr: " + decisionAttr);
 				int attrNumVal = decisionAttr.numValues();
 				Node[] currChildren = new Node[attrNumVal];
 				// For each value of decisionAttr, create a new descendant of the node
@@ -64,6 +68,7 @@ public class DecisionTree implements Classifier {
 					String attributeValue = decisionAttr.value(i);
 					childNode.attributeValueIndex = decisionAttr.indexOfValue(attributeValue);
 					childNode.height = currNode.height + 1;
+					childNode.children = new Node[0];
 					currChildren[i] = childNode;
 				}
 				// Distribute training examples to descendant nodes
@@ -71,17 +76,19 @@ public class DecisionTree implements Classifier {
 					Instance instance = currNode.data.instance(i);
 					String value = instance.stringValue(decisionAttr);
 					for (int j = 0; j < attrNumVal; j++){
-					    // if the index of this instance's decisionAttr value is equal to the attributeValueIndex of this child
-                        if (currChildren[j].attributeValueIndex == decisionAttr.indexOfValue(value)){
-							currChildren[i].data.add(instance);
+						// if the index of this instance's decisionAttr value is equal to the attributeValueIndex of this child
+						if (currChildren[j].attributeValueIndex == decisionAttr.indexOfValue(value)){
+							currChildren[j].data.add(instance);
 						}
 					}
 				}
+				int insert = 0;
 				// Insert all (non empty) descendant nodes to Q
 				for (int i = 0; i < attrNumVal; i++){
 					if (currChildren[i].data.numInstances() > 0) {
 						currChildren[i].returnValue = getReturnValue(currChildren[i].data);
 						queue.add(currChildren[i]);
+						insert++;
 					}
 				}
 				currNode.children = currChildren;
@@ -94,16 +101,16 @@ public class DecisionTree implements Classifier {
 	// Output: double number, 0 or 1, represent the classified class
 	@Override
 	public double classifyInstance(Instance instance) {
-		double retClassification = 0.0;
 		Node currNode = rootNode;
 		// walk down the tree
-		while (currNode.children.length != 0 ){
+		while (currNode.children.length == 0 ){
 			// set currNode as the child of currNode that has the attribute value same as the instance
 			for(int i = 0; i < currNode.children.length; i++) {
 				String instanceAttrValue = instance.stringValue(currNode.attributeIndex);
 				int instanceAttrValueIndex = currNode.data.attribute(currNode.attributeIndex).indexOfValue(instanceAttrValue);
 				if (instanceAttrValueIndex == currNode.children[i].attributeValueIndex){
 					currNode = currNode.children[i];
+					break;
 				}
 			}
 		}
@@ -124,44 +131,56 @@ public class DecisionTree implements Classifier {
 				mistakes++;
 			}
 		}
-			return (double) mistakes / (double) data.numInstances();
-    }
+		return (double) mistakes / (double) data.numInstances();
+	}
 
 	// calculates the gain (giniGain or informationGain depending on the impurity measure) of splitting the input data according to the attribute.
 	// Input: Instances object (a subset of the training data), attribute index (int).
 	// Output: The gain (double).
 	public double calcGain(Instances data, int attrIndex) {
 		double sumValues = 0.0;
-		double[] S = generateProb(data);
+		double[] Sprob = generateProb(data);
 		Attribute attribute = data.attribute(attrIndex);
 		for (int i=0; i < attribute.numValues(); i++){
 			// create Instances object with instances that have value i in the attribute
 			Instances SvInstances = new Instances(data, 0);
 			for (int j = 0; j < data.numInstances(); j++) {
-				Instance instance = data.instance(i);
+				Instance instance = data.instance(j);
 				if (instance.stringValue(attrIndex).equals(attribute.value(i))) {
 					SvInstances.add(instance);
 				}
 			}
-			// calculate the correct impurity
-			if (giniImpurity) {
-				sumValues += (SvInstances.numInstances() / data.numInstances()) * calcGini(generateProb(SvInstances));
-			} else {
-				sumValues += (SvInstances.numInstances() / data.numInstances()) * calcEntropy(generateProb(SvInstances));
+			if (SvInstances.numInstances() > 0) {
+				// calculate the correct impurity
+				double[] Svprob = generateProb(SvInstances);
+				double SSv = ((double) SvInstances.numInstances()) / ( (double) data.numInstances());
+				if (giniImpurity) {
+					sumValues += SSv * calcGini(Svprob);
+				} else {
+					sumValues += SSv * calcEntropy(Svprob);
+				}
 			}
 		}
-		return ((giniImpurity) ? calcGini(S) - sumValues : calcEntropy(S) - sumValues);
+		return ((giniImpurity) ? calcGini(Sprob) - sumValues : calcEntropy(Sprob) - sumValues);
 	}
 
 	// return an array of probabilities from the data, split by class attribute
 	public double[] generateProb(Instances data) {
-		// create an array in the length of the number of values the class index has (like 'yes', 'no' -> 2)
-		AttributeStats stats = data.attributeStats(data.classIndex());
-		// nominalWeights returns an array with the number of instances for each value of the attribute
-		double[] prob = stats.nominalWeights;
-		for (int i=0; i< prob.length; i++) {
-			prob[i] = prob[i] / data.numInstances();
+		double[] prob = new double[data.classAttribute().numValues()];
+		for (int i = 0; i < data.numInstances(); i++){
+			Instance instance = data.instance(i);
+			String value = instance.stringValue(data.classAttribute());
+			for (int j = 0; j < prob.length; j++){
+				// if the index of this instance's class Attr value is equal to the attributeValueIndex of this child
+				if (j == data.classAttribute().indexOfValue(value)){
+					prob[j] = prob[j] + 1.0;
+				}
+			}
 		}
+		for (int j = 0; j < prob.length; j++){
+			prob[j] = prob[j]/ (double) data.numInstances();
+		}
+
 		return prob;
 	}
 
@@ -171,11 +190,16 @@ public class DecisionTree implements Classifier {
 	// Output: The Entropy (double).
 	public double calcEntropy(double[] prob) {
 		double retEntropy = 0.0;
-		for (int i=0; i< prob.length; i++){
-			retEntropy =- prob[i] * (Math.log(prob[i])/Math.log(2));
+		//System.out.println();
+		for (int i=0; i< prob.length; i++) {
+			if (prob[i] == 0) {
+				retEntropy = 0;
+			} else
+				retEntropy = -prob[i] * (Math.log(prob[i]) / Math.log(2));
 		}
 		return retEntropy;
 	}
+
 
 	// Calculates the return value of the node
 	// Input: the instances of this node
@@ -199,13 +223,26 @@ public class DecisionTree implements Classifier {
 		return ((double) count1 / (double) data.numInstances());
 	}
 
+	// says if all the instances in the data have the same value for all attributes
+	// Input: instances
+	// Output: true or false
+	public boolean dataHasSameValForAllAttr(Instances data) {
+		boolean retval = true;
+		InstanceComparator compare = new InstanceComparator(false);
+		for (int i=0; i < data.numInstances(); i++){
+			if (compare.compare(data.instance(i), data.instance(0)) != 0.0){
+				return false;
+			}
+		}
+		return retval;
+	}
 	// Calculates the Gini of a random variable.
 	// Input: A set of probabilities (the fraction of each possible value in the tested set).
 	// Output: The Gini (double).
 	public double calcGini(double[] prob) {
 		double retGini = 0.0;
 		for (int i=0; i< prob.length; i++){
-			retGini =+ prob[i] * prob[i];
+			retGini += prob[i] * prob[i];
 		}
 		return 1.0 - retGini;
 	}
@@ -223,7 +260,7 @@ public class DecisionTree implements Classifier {
 	// Choose the attribute that provides the largest difference!
 	public int getDecisionAttr(Instances data) {
 		int retAttr = 0;
-		double bestGain = 0;
+		double bestGain = 0.0;
 		// itterate over the attribute
 		for (int i=0; i < data.numAttributes() - 1; i++){
 			double gain = calcGain(data, i);
@@ -233,45 +270,46 @@ public class DecisionTree implements Classifier {
 				retAttr = i;
 			}
 		}
+
 		return retAttr;
 	}
 
-    void printTree() {
-	    recursivePreorderTree(rootNode);
-    }
+	void printTree() {
+		recursivePreorderTree(rootNode);
+	}
 
 	// print the tree with recursive preorder algorithm
-    void recursivePreorderTree(Node node)
-    {
-        // first print data of node
-        printNode(node);
+	void recursivePreorderTree(Node node)
+	{
+		// first print data of node
+		printNode(node);
 
-        if (node.children.length == 0) {
-            return;
-        }
-        // then recur on left sutree
-        recursivePreorderTree(node.children[0]);
-        // now recur on right subtree
-        recursivePreorderTree(node.children[node.children.length - 1]);
-    }
+		if (node.children.length == 0) {
+			return;
+		}
+		// then recur on left sutree
+		recursivePreorderTree(node.children[0]);
+		// now recur on right subtree
+		recursivePreorderTree(node.children[node.children.length - 1]);
+	}
 
-    void printNode(Node node)
-    {
-        // create the tab indentation- 4*node.height spaces
-        String spaces = String.format("%"+(node.height*4)+"s", "");
-        //String spaces = String.format("%1$#"+(node.height*4)+"s", "");
-        if (node.height == 0) {
-            System.out.println("Root");
-        } else {
-            System.out.println(spaces + "if attribute " + node.parent.attributeIndex + " = " + node.attributeValueIndex);
-        }
-        if (node.children.length == 0) {
-            System.out.println(spaces + "leaf. Returning value: " + node.returnValue);
-        } else {
-            System.out.println(spaces + "Returning value: " + node.returnValue);
-        }
+	void printNode(Node node)
+	{
+		// create the tab indentation- 4*node.height spaces
+		String spaces = ((node.height == 0)? "" : String.format("%"+(node.height*4)+"s", ""));
+		//String spaces = String.format("%1$#"+(node.height*4)+"s", "");
+		if (node.height == 0) {
+			System.out.println("Root");
+		} else {
+			System.out.println(spaces + "if attribute " + node.parent.attributeIndex + " = " + node.attributeValueIndex);
+		}
+		if (node.children.length == 0) {
+			System.out.println(spaces + "leaf. Returning value: " + node.returnValue);
+		} else {
+			System.out.println(spaces + "Returning value: " + node.returnValue);
+		}
 
-    }
+	}
 
 	@Override
 	public double[] distributionForInstance(Instance arg0) throws Exception {

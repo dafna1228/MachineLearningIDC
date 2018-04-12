@@ -38,11 +38,22 @@ public class MainHW2 {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		Instances trainingCancer = loadData("cancer_train.txt");
-		Instances testingCancer = loadData("cancer_test.txt");
-		Instances validationCancer = loadData("cancer_validation.txt");
+		Instances trainingCancer = loadData("src\\HomeWork2\\cancer_train.txt");
+		Instances testingCancer = loadData("src\\HomeWork2\\cancer_test.txt");
+		Instances validationCancer = loadData("src\\HomeWork2\\cancer_validation.txt");
 		
         //TODO: complete the Main method
+
+		// Construct a tree with Gini as the impurity measure using the training set.
+		DecisionTree giniTree = new DecisionTree();
+		giniTree.setGiniImpurity(true);
+		giniTree.buildClassifier(trainingCancer);
+		giniTree.printTree();
+
+		// Calculate the average error on the validation set.
+		double giniErr = giniTree.calcAvgError(validationCancer);
+		System.out.println("Gini Err: " + giniErr);
+
 
 		// Construct a tree with Entropy as the impurity measure using the training set.
 		DecisionTree entropyTree = new DecisionTree();
@@ -54,25 +65,17 @@ public class MainHW2 {
 		double entropyErr = entropyTree.calcAvgError(validationCancer);
 		System.out.println("Entropy Err: " + entropyErr);
 
-		// Construct a tree with Gini as the impurity measure using the training set.
-		DecisionTree giniTree = new DecisionTree();
-		entropyTree.setGiniImpurity(true);
-		giniTree.buildClassifier(trainingCancer);
-
-		// Calculate the average error on the validation set.
-		double giniErr = giniTree.calcAvgError(validationCancer);
-		System.out.println("Gini Err: " + giniErr);
 
 		// Choose the impurity measure that gave you the lowest validation error. Use this impurity measure
 		// for the rest of the tasks.
-		DecisionTree fullTree = null;
-		if (giniErr < entropyErr){
-			fullTree = giniTree;
-			entropyTree.setGiniImpurity(true);
-		} else {
-			fullTree = entropyTree;
-			entropyTree.setGiniImpurity(false);
-		}
+//		DecisionTree fullTree = null;
+//		if (giniErr < entropyErr){
+//			fullTree = giniTree;
+//			entropyTree.setGiniImpurity(true);
+//		} else {
+//			fullTree = entropyTree;
+//			entropyTree.setGiniImpurity(false);
+//		}
 
 		// For each p-value cutoff value {1 (no pruning), 0.75, 0.5, 0.25, 0.05, 0.005} do the following:
 
