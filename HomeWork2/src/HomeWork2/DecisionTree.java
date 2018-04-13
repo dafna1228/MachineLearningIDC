@@ -24,7 +24,20 @@ public class DecisionTree implements Classifier {
 	private Node rootNode = new Node();
 	private boolean giniImpurity = false;
 	private LinkedList<Integer> classificationHeights;
-
+	private double pValue = 0.0;
+	double[][] chiSquareTable ={
+			{0, 0.102, 0.455, 1.323, 3.841, 7.879},
+			{0, 0.575, 1.386, 2.773, 5.991, 10.597},
+			{0, 1.213, 2.366, 4.108, 7.815, 12.838},
+			{0, 1.923, 3.357, 5.385, 9.488, 14.860},
+			{0, 2.675, 4.351, 6.626, 11.070, 16.750},
+			{0, 3.455, 5.348, 7.841, 12.592, 18.548},
+			{0, 4.255, 6.346, 9.037, 14.067, 20.278},
+			{0, 5.071, 7.344, 10.219, 15.507, 21.955},
+			{0, 5.899, 8.343, 11.389, 16.919, 23.589},
+			{0, 6.737, 9.342, 12.549, 18.307, 25.188},
+			{0, 7.584, 10.341, 13.701, 19.675, 26.757}
+	};
 	public void setGiniImpurity(boolean isGini) {
 		giniImpurity = isGini;
 	}
