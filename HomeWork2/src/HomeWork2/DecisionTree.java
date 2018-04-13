@@ -38,10 +38,14 @@ public class DecisionTree implements Classifier {
 			{0, 6.737, 9.342, 12.549, 18.307, 25.188},
 			{0, 7.584, 10.341, 13.701, 19.675, 26.757}
 	};
+
 	public void setGiniImpurity(boolean isGini) {
 		giniImpurity = isGini;
 	}
 
+	public void setpValue(double value) {
+		pValue = value;
+	}
 	// Builds a decision tree from the training data. buildClassifier is separated from buildTree in order
 	// to allow you to do extra preprocessing before calling buildTree method or post processing after.
 	// Input: Instances object.

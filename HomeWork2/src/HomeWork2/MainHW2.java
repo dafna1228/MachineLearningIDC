@@ -68,20 +68,16 @@ public class MainHW2 {
 		System.out.println("Gini Err: " + giniTree.calcAvgError(trainingCancer));
 		System.out.println("Gini Err validation: " + giniErr);
 
-
-
-
-
-		// Choose the impurity measure that gave you the lowest validation error. Use this impurity measure
-		// for the rest of the tasks.
-//		DecisionTree fullTree = null;
-//		if (giniErr < entropyErr){
-//			fullTree = giniTree;
-//			entropyTree.setGiniImpurity(true);
-//		} else {
-//			fullTree = entropyTree;
-//			entropyTree.setGiniImpurity(false);
-//		}
+	// Choose the impurity measure that gave you the lowest validation error. Use this impurity measure
+	// for the rest of the tasks.
+	DecisionTree fullTree = null;
+	if (giniErr < entropyErr){
+		fullTree = giniTree;
+		entropyTree.setGiniImpurity(true);
+	} else {
+		fullTree = entropyTree;
+		entropyTree.setGiniImpurity(false);
+	}
 
 		// For each p-value cutoff value {1 (no pruning), 0.75, 0.5, 0.25, 0.05, 0.005} do the following:
 
