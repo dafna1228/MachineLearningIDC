@@ -44,17 +44,6 @@ public class MainHW2 {
 		
         //TODO: complete the Main method
 
-		// Construct a tree with Gini as the impurity measure using the training set.
-		DecisionTree giniTree = new DecisionTree();
-		giniTree.setGiniImpurity(true);
-		giniTree.buildClassifier(trainingCancer);
-		giniTree.printTree();
-
-		// Calculate the average error on the validation set.
-		double giniErr = giniTree.calcAvgError(validationCancer);
-		System.out.println("Gini Err: " + giniErr);
-
-
 		// Construct a tree with Entropy as the impurity measure using the training set.
 		DecisionTree entropyTree = new DecisionTree();
 		entropyTree.setGiniImpurity(false);
@@ -63,7 +52,24 @@ public class MainHW2 {
 
 		// Calculate the average error on the validation set.
 		double entropyErr = entropyTree.calcAvgError(validationCancer);
-		System.out.println("Entropy Err: " + entropyErr);
+		System.out.println("E Err: " + entropyTree.calcAvgError(trainingCancer));
+
+		System.out.println("Entropy Err validation: " + entropyErr);
+
+
+		// Construct a tree with Gini as the impurity measure using the training set.
+		DecisionTree giniTree = new DecisionTree();
+		giniTree.setGiniImpurity(true);
+		giniTree.buildClassifier(trainingCancer);
+		giniTree.printTree();
+
+		// Calculate the average error on the validation set.
+		double giniErr = giniTree.calcAvgError(validationCancer);
+		System.out.println("Gini Err: " + giniTree.calcAvgError(trainingCancer));
+		System.out.println("Gini Err validation: " + giniErr);
+
+
+
 
 
 		// Choose the impurity measure that gave you the lowest validation error. Use this impurity measure

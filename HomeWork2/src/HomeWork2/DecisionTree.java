@@ -9,7 +9,9 @@ import java.util.Queue;
 class Node {
 	Node[] children;
 	Node parent;
+	// the index if the decision attribute (like 'age', 'breast')
 	int attributeIndex;
+	// the index of a spesific value of the decision attribute (like 'no' or 'premeno')
 	int attributeValueIndex;
 	double returnValue;
 	Instances data;
@@ -41,14 +43,13 @@ public class DecisionTree implements Classifier {
 		rootNode.returnValue = getReturnValue(rootNode.data);
 		rootNode.height = 0;
 		queue.add(rootNode);
-		int count = 0;
 		while ( !queue.isEmpty()){
 			//System.out.println("q size: " + queue.size());
 			Node currNode = queue.remove();
 			// If training examples in n are not perfectly classified-
-//			for (int i = 0; i < currNode.data.numInstances(); i++) {
-//				System.out.println(currNode.data.instance(i));
-//			}
+			for (int i = 0; i < currNode.data.numInstances(); i++) {
+				System.out.println(currNode.data.instance(i));
+			}
 			// check stopping condition- If training examples in n are not perfectly classified,
 			// or all the instances in data have the same value fot all attributes
 			if ((calcClassVal1Ratio(currNode.data) % 1.0 != 0.0) && (!dataHasSameValForAllAttr(currNode.data)) ) {
@@ -56,7 +57,7 @@ public class DecisionTree implements Classifier {
 				int decisionAttrIndex = getDecisionAttr(currNode.data);
 				currNode.attributeIndex = decisionAttrIndex;
 				Attribute decisionAttr = currNode.data.attribute(decisionAttrIndex);
-				//System.out.println("decision attr: " + decisionAttr);
+				System.out.println("decision attr: " + decisionAttr.index());
 				int attrNumVal = decisionAttr.numValues();
 				Node[] currChildren = new Node[attrNumVal];
 				// For each value of decisionAttr, create a new descendant of the node
@@ -82,13 +83,11 @@ public class DecisionTree implements Classifier {
 						}
 					}
 				}
-				int insert = 0;
 				// Insert all (non empty) descendant nodes to Q
 				for (int i = 0; i < attrNumVal; i++){
 					if (currChildren[i].data.numInstances() > 0) {
 						currChildren[i].returnValue = getReturnValue(currChildren[i].data);
 						queue.add(currChildren[i]);
-						insert++;
 					}
 				}
 				currNode.children = currChildren;
@@ -103,7 +102,7 @@ public class DecisionTree implements Classifier {
 	public double classifyInstance(Instance instance) {
 		Node currNode = rootNode;
 		// walk down the tree
-		while (currNode.children.length == 0 ){
+		while (currNode.children.length != 0 ){
 			// set currNode as the child of currNode that has the attribute value same as the instance
 			for(int i = 0; i < currNode.children.length; i++) {
 				String instanceAttrValue = instance.stringValue(currNode.attributeIndex);
@@ -153,11 +152,11 @@ public class DecisionTree implements Classifier {
 			if (SvInstances.numInstances() > 0) {
 				// calculate the correct impurity
 				double[] Svprob = generateProb(SvInstances);
-				double SSv = ((double) SvInstances.numInstances()) / ( (double) data.numInstances());
+				double SvdivS = ((double) SvInstances.numInstances()) / ( (double) data.numInstances());
 				if (giniImpurity) {
-					sumValues += SSv * calcGini(Svprob);
+					sumValues += SvdivS * calcGini(Svprob);
 				} else {
-					sumValues += SSv * calcEntropy(Svprob);
+					sumValues += SvdivS * calcEntropy(Svprob);
 				}
 			}
 		}
@@ -264,6 +263,7 @@ public class DecisionTree implements Classifier {
 		// itterate over the attribute
 		for (int i=0; i < data.numAttributes() - 1; i++){
 			double gain = calcGain(data, i);
+			//System.out.println("gain: "+ gain);
 			if (gain > bestGain) {
 				// the gain for this attribute gives bigger change in impurity
 				bestGain = gain;
