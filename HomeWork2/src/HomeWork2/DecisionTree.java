@@ -3,7 +3,9 @@ package HomeWork2;
 import weka.classifiers.Classifier;
 import weka.core.*;
 
+import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.ListIterator;
 import java.util.Queue;
 
 class Node {
@@ -21,6 +23,7 @@ class Node {
 public class DecisionTree implements Classifier {
 	private Node rootNode = new Node();
 	private boolean giniImpurity = false;
+	private LinkedList<Integer> classificationHeights;
 
 	public void setGiniImpurity(boolean isGini) {
 		giniImpurity = isGini;
@@ -113,6 +116,7 @@ public class DecisionTree implements Classifier {
 				}
 			}
 		}
+		classificationHeights.add(currNode.height);
 		return currNode.returnValue;
 	}
 
@@ -123,6 +127,7 @@ public class DecisionTree implements Classifier {
 	// Output: Average error (double).
 	public double calcAvgError(Instances data) {
 		int mistakes = 0;
+		classificationHeights = new LinkedList<Integer>();
 		for (int i=0; i < data.numInstances(); i++) {
 			double prediction = classifyInstance(data.instance(i));
 			// if the prediction is different from the real class value
@@ -133,6 +138,27 @@ public class DecisionTree implements Classifier {
 		return (double) mistakes / (double) data.numInstances();
 	}
 
+	protected int getMaxHeight(){
+		ListIterator <Integer> iterator = classificationHeights.listIterator();
+		int maxHeight = 0;
+		int currHeight;
+		while (iterator.hasNext()){
+			currHeight = iterator.next();
+			if (currHeight > maxHeight){
+				maxHeight = currHeight;
+			}
+		}
+		return maxHeight;
+	}
+	
+	protected int getAvgHeight(){
+		ListIterator <Integer> iterator = classificationHeights.listIterator();
+		int sumHeights = 0;
+		while (iterator.hasNext()){
+			sumHeights += iterator.next();
+		}
+		return sumHeights / classificationHeights.size();
+	}
 	// calculates the gain (giniGain or informationGain depending on the impurity measure) of splitting the input data according to the attribute.
 	// Input: Instances object (a subset of the training data), attribute index (int).
 	// Output: The gain (double).
