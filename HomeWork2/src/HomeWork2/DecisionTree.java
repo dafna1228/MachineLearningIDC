@@ -24,7 +24,7 @@ public class DecisionTree implements Classifier {
 	private Node rootNode = new Node();
 	private boolean giniImpurity = false;
 	private LinkedList<Integer> classificationHeights;
-	private double pValue = 0.0;
+	private double pValue = 1.0;
 	double[][] chiSquareTable ={
 			{0, 0.102, 0.455, 1.323, 3.841, 7.879},
 			{0, 0.575, 1.386, 2.773, 5.991, 10.597},
@@ -51,12 +51,12 @@ public class DecisionTree implements Classifier {
 	// Input: Instances object.
 	@Override
 	public void buildClassifier(Instances data) throws Exception {
-		buildTree(data);
+		buildTree(data, pValue);
 	}
 
 	// Builds the decision tree on given data set using either a recursive or queue algorithm.
 	// Input: Instances object (probably the training data set or subset in a recursive method).
-	public void buildTree(Instances data) throws Exception {
+	public void buildTree(Instances data, double pValue) throws Exception {
 		Queue<Node> queue = new LinkedList<Node>();
 		// initialize rootNode
 		rootNode.data = data;
@@ -76,41 +76,48 @@ public class DecisionTree implements Classifier {
 				// Assign the decision attribute for the node data
 				int decisionAttrIndex = getDecisionAttr(currNode.data);
 				currNode.attributeIndex = decisionAttrIndex;
-				Attribute decisionAttr = currNode.data.attribute(decisionAttrIndex);
-				System.out.println("decision attr: " + decisionAttr.index());
-				int attrNumVal = decisionAttr.numValues();
-				Node[] currChildren = new Node[attrNumVal];
-				// For each value of decisionAttr, create a new descendant of the node
-				for (int i = 0; i < attrNumVal; i++){
-					Node childNode = new Node();
-					childNode.parent = currNode;
-					// childNode.attributeIndex = decisionAttr;
-					childNode.data = new Instances(data,0);
-					String attributeValue = decisionAttr.value(i);
-					childNode.attributeValueIndex = decisionAttr.indexOfValue(attributeValue);
-					childNode.height = currNode.height + 1;
-					childNode.children = new Node[0];
-					currChildren[i] = childNode;
+				currNode.children = new Node[0];
+				boolean prune = false;
+				if (pValue < 1.0) {
+					prune = isPrune(currNode.data, currNode.attributeIndex);
 				}
-				// Distribute training examples to descendant nodes
-				for (int i = 0; i < currNode.data.numInstances(); i++){
-					Instance instance = currNode.data.instance(i);
-					String value = instance.stringValue(decisionAttr);
-					for (int j = 0; j < attrNumVal; j++){
-						// if the index of this instance's decisionAttr value is equal to the attributeValueIndex of this child
-						if (currChildren[j].attributeValueIndex == decisionAttr.indexOfValue(value)){
-							currChildren[j].data.add(instance);
+				// if prune is true, don't create children
+				if (!prune) {
+					Attribute decisionAttr = currNode.data.attribute(decisionAttrIndex);
+					int attrNumVal = decisionAttr.numValues();
+					Node[] currChildren = new Node[attrNumVal];
+					// For each value of decisionAttr, create a new descendant of the node
+					for (int i = 0; i < attrNumVal; i++) {
+						Node childNode = new Node();
+						childNode.parent = currNode;
+						// childNode.attributeIndex = decisionAttr;
+						childNode.data = new Instances(data, 0);
+						String attributeValue = decisionAttr.value(i);
+						childNode.attributeValueIndex = decisionAttr.indexOfValue(attributeValue);
+						childNode.height = currNode.height + 1;
+						childNode.children = new Node[0];
+						currChildren[i] = childNode;
+					}
+					// Distribute training examples to descendant nodes
+					for (int i = 0; i < currNode.data.numInstances(); i++) {
+						Instance instance = currNode.data.instance(i);
+						String value = instance.stringValue(decisionAttr);
+						for (int j = 0; j < attrNumVal; j++) {
+							// if the index of this instance's decisionAttr value is equal to the attributeValueIndex of this child
+							if (currChildren[j].attributeValueIndex == decisionAttr.indexOfValue(value)) {
+								currChildren[j].data.add(instance);
+							}
 						}
 					}
-				}
-				// Insert all (non empty) descendant nodes to Q
-				for (int i = 0; i < attrNumVal; i++){
-					if (currChildren[i].data.numInstances() > 0) {
-						currChildren[i].returnValue = getReturnValue(currChildren[i].data);
-						queue.add(currChildren[i]);
+					// Insert all (non empty) descendant nodes to Q
+					for (int i = 0; i < attrNumVal; i++) {
+						if (currChildren[i].data.numInstances() > 0) {
+							currChildren[i].returnValue = getReturnValue(currChildren[i].data);
+							queue.add(currChildren[i]);
+						}
 					}
+					currNode.children = currChildren;
 				}
-				currNode.children = currChildren;
 			}
 		}
 	}
