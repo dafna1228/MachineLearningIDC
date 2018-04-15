@@ -26,6 +26,7 @@ public class DecisionTree implements Classifier {
 	private LinkedList<Integer> classificationHeights;
 	private double pValue = 0.0;
 	private double pValue = 1.0;
+	private int pValueIndex = 0;
 	double[][] chiSquareTable ={
 			{0, 0, 0, 0, 0, 0},
 			{0, 0.102, 0.455, 1.323, 3.841, 7.879},
@@ -48,6 +49,8 @@ public class DecisionTree implements Classifier {
 	// We should probably use indices instead of values (index 0 is p-value 1, index 1 is p-value 0.75 and so on).
 	public void setpValue(double value) {
 		pValue = value;
+	public void setpValueIndex(int value) {
+		pValueIndex = value;
 	}
 	// Builds a decision tree from the training data. buildClassifier is separated from buildTree in order
 	// to allow you to do extra preprocessing before calling buildTree method or post processing after.
@@ -79,6 +82,9 @@ public class DecisionTree implements Classifier {
 			for (int i = 0; i < currNode.data.numInstances(); i++) {
 				System.out.println(currNode.data.instance(i));
 			}
+			//for (int i = 0; i < currNode.data.numInstances(); i++) {
+				//System.out.println(currNode.data.instance(i));
+			//}
 			// check stopping condition- If training examples in n are not perfectly classified,
 			// or all the instances in data have the same value fot all attributes
 			if ((calcClassVal1Ratio(currNode.data) % 1.0 != 0.0) && (!dataHasSameValForAllAttr(currNode.data)) ) {
@@ -89,6 +95,9 @@ public class DecisionTree implements Classifier {
 				boolean prune = false;
 				if (pValue < 1.0) {
 					prune = isPrune(currNode.data, currNode.attributeIndex);
+				// If the p_value is not 1 (stored in index 0)
+				if (pValueIndex > 0) {
+					prune = shouldPrune(currNode.data, currNode.attributeIndex, pValueIndex);
 				}
 				// if prune is true, don't create children
 				if (!prune) {
@@ -165,6 +174,7 @@ public class DecisionTree implements Classifier {
 			double prediction = classifyInstance(data.instance(i));
 			// if the prediction is different from the real class value
 			if ( prediction != data.instance(i).classValue()){
+			if (prediction != data.instance(i).classValue()){
 				mistakes++;
 			}
 		}
@@ -196,6 +206,7 @@ public class DecisionTree implements Classifier {
 			}
 			E0 = Df * probs[0];
 			E1 = Df * probs[1];
+			// Making sure we're not dividing by zero
 			if ((E0 != 0) && (E1 != 0)){
 				chiSquareScore += Math.pow((pf - E0), 2) / E0 + Math.pow((nf - E1), 2) / E1; 
 			}
