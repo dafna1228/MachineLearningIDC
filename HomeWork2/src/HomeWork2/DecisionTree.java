@@ -26,6 +26,7 @@ public class DecisionTree implements Classifier {
 	private LinkedList<Integer> classificationHeights;
 	private double pValue = 0.0;
 	double[][] chiSquareTable ={
+			{0, 0, 0, 0, 0, 0},
 			{0, 0.102, 0.455, 1.323, 3.841, 7.879},
 			{0, 0.575, 1.386, 2.773, 5.991, 10.597},
 			{0, 1.213, 2.366, 4.108, 7.815, 12.838},
@@ -42,7 +43,8 @@ public class DecisionTree implements Classifier {
 	public void setGiniImpurity(boolean isGini) {
 		giniImpurity = isGini;
 	}
-
+	
+	// We should probably use indices instead of values (index 0 is p-value 1, index 1 is p-value 0.75 and so on).
 	public void setpValue(double value) {
 		pValue = value;
 	}
@@ -57,6 +59,7 @@ public class DecisionTree implements Classifier {
 	// Builds the decision tree on given data set using either a recursive or queue algorithm.
 	// Input: Instances object (probably the training data set or subset in a recursive method).
 	public void buildTree(Instances data) throws Exception {
+		//System.out.println("recurrence-events index - " + data.c);
 		Queue<Node> queue = new LinkedList<Node>();
 		// initialize rootNode
 		rootNode.data = data;
@@ -154,7 +157,86 @@ public class DecisionTree implements Classifier {
 		}
 		return (double) mistakes / (double) data.numInstances();
 	}
-
+	
+	// Calculates the chi square statistic of splitting the data according to the splitting attribute as learned in class.
+	// Input: Instances object (a subset of the training data), attribute index (int).
+	// Output: The chi square score (double).
+	protected double calcChiSquare(Instances data, int attrIndex){
+		double chiSquareScore = 0;
+		double[] probs = generateProb(data);
+		double E0, E1 = 0;
+		int Df, pf, nf = 0;
+		Instances[] instancesByValuesOfAttr = getInstancesWithValue(data, attrIndex);
+		for (int i = 0; i < instancesByValuesOfAttr.length; i++) {
+			Df = instancesByValuesOfAttr[i].numInstances();
+			pf = 0;
+			nf = 0;
+			for (int j = 0; j < Df; j++) {
+				if (instancesByValuesOfAttr[i].instance(j).classValue() == 0){
+					// Counting the number of instances that have the value i in the attribute and the class value is 0 (recurrence)
+					pf++;
+				}
+				else if (instancesByValuesOfAttr[i].instance(j).classValue() == 1){
+					// Counting the number of instances that have the value i in the attribute and the class value is 1 (no recurrence)
+					nf++;
+				}
+			}
+			E0 = Df * probs[0];
+			E1 = Df * probs[1];
+			if ((E0 != 0) && (E1 != 0)){
+				chiSquareScore += Math.pow((pf - E0), 2) / E0 + Math.pow((nf - E1), 2) / E1; 
+			}
+		}
+		return chiSquareScore;
+	}
+	
+	private Instances[] getInstancesWithValue(Instances data, int attrIndex){
+		int valueIndex;
+		// Each cell of the array contains all the instances that have the attribute's value with the index of the cell 
+		Instances[] instancesWithValue = new Instances[data.attribute(attrIndex).numValues()];
+		// Initializing the Instances array
+		for (int i = 0; i < data.attribute(attrIndex).numValues(); i++) { 
+			instancesWithValue[i] = new Instances(data, data.numInstances());
+		}
+		// Adding each instance in data to instancesWithValue in the index it's value of attribute with index attrIndex
+		for (int j = 0; j < data.numInstances(); j++) {
+			valueIndex = (int) data.instance(j).value(attrIndex);
+			instancesWithValue[valueIndex].add(data.instance(j));
+		}
+		return instancesWithValue;
+	} 
+	
+	protected int getFreedomDegree(Instances data, int attrIndex){
+		int[] relevantValues = new int[data.attribute(attrIndex).numValues()];
+		int numValues = 0;
+		// Calculating the number of relevant attribute values
+		for (int i = 0; i < data.numInstances(); i++) {
+				for (int j = 0; j < data.attribute(attrIndex).numValues(); j++) {
+					if (data.instance(i).stringValue(attrIndex) == data.attribute(attrIndex).value(j)){
+						relevantValues[j]++;
+				}
+			}
+		}
+		for (int k = 0; k < relevantValues.length; k++) {
+			if (relevantValues[k] > 0){
+				numValues++;
+			}
+		}
+		// The degree of freedom is the number of relevant values minus 1
+		return numValues - 1;
+	}
+	
+	protected boolean shouldPrune(Instances data, int attrIndex, int pValueIndex){
+		int freedomDeg = getFreedomDegree(data, attrIndex);
+		double chiSquareStat = calcChiSquare(data, attrIndex);
+		// If the Chi square statistic is smaller than the number from the table we should prune.
+		if (chiSquareStat < chiSquareTable[freedomDeg][pValueIndex]){
+			return true;
+		} else {
+			return false;
+		}	
+	}
+	
 	protected int getMaxHeight(){
 		ListIterator <Integer> iterator = classificationHeights.listIterator();
 		int maxHeight = 0;
@@ -287,15 +369,6 @@ public class DecisionTree implements Classifier {
 			retGini += prob[i] * prob[i];
 		}
 		return 1.0 - retGini;
-	}
-
-	// Calculates the chi square statistic of splitting the data according to the splitting attribute as learned in class.
-	// Input: Instances object (a subset of the training data), attribute index (int).
-	// Output: The chi square score (double).
-	public double calcChiSquare(double[] prob) {
-		double retChiSquare = 0.0;
-
-		return retChiSquare;
 	}
 
 	// Measure the impurity before, Measure the impurity after,
