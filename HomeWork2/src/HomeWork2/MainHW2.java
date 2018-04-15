@@ -70,31 +70,41 @@ public class MainHW2 {
 
 	// Choose the impurity measure that gave you the lowest validation error. Use this impurity measure
 	// for the rest of the tasks.
-	DecisionTree fullTree = null;
+		boolean GiniImpurity = false;
 	if (giniErr < entropyErr){
-		fullTree = giniTree;
-		entropyTree.setGiniImpurity(true);
-	} else {
-		fullTree = entropyTree;
-		entropyTree.setGiniImpurity(false);
+		GiniImpurity = true;
 	}
 
-		// For each p-value cutoff value {1 (no pruning), 0.75, 0.5, 0.25, 0.05, 0.005} do the following:
-
-			// Construct a tree and prune it according to the current cutoff value.
-			// Calculate training & validation errors.
-			// Calculate the tree average & max heights according to the validation set as described above.
-
+	double bestPValue = 0.0;
+	double bestError = Double.MAX_VALUE;
+	// For each p-value cutoff value {1 (no pruning), 0.75, 0.5, 0.25, 0.05, 0.005} do the following:
+	double[] pValues = {1, 0.75, 0.5, 0.25, 0.05, 0.005};
+	for (int i = 0; i < pValues.length; i++) {
+		// Construct a tree and prune it according to the current cutoff value.
+		DecisionTree pruneTree = new DecisionTree();
+		pruneTree.setGiniImpurity(GiniImpurity);
+		pruneTree.setpValue(pValues[i]);
+		// pruning and building
+		pruneTree.buildClassifier(validationCancer);
+		// Calculate training & validation errors.
+		double trainError = pruneTree.calcAvgError(trainingCancer);
+		double validationError = pruneTree.calcAvgError(validationCancer);
 		// Select the cutoff that resulted in the best validation error.
+		if (validationError < bestError){
+			bestError = validationError;
+			bestPValue = i;
+		}
+		// Calculate the tree average & max heights according to the validation set as described above.
+		double avgHeight = pruneTree.getAvgHeight();
+		double maxHeight = pruneTree.getMaxHeight();
+	}
 
-		// Calculate the test error for the tree corresponding to this configuration.
-
-		// Print the corresponding tree to the console as described above.
-
-		// Plot the training and validation error rates vs the p-value cutoff on the same graph
-		// (two different lines in two different colors) in Excel
-		// using the ‘Scatter with Smooth Lines and Markers’ graphing utility.
-
-
+	// Calculate the test error for the tree corresponding to best validation error.
+	DecisionTree bestTree = new DecisionTree();
+	bestTree.setGiniImpurity(GiniImpurity);
+	bestTree.setpValue(bestPValue);
+	bestTree.buildClassifier(testingCancer);
+	// Print the corresponding tree to the console as described above.
+	bestTree.printTree();
 	}
 }
