@@ -44,17 +44,8 @@ public class MainHW3 {
 					// init knn object
 					Knn knn = new Knn();
 					knn.setData(data);
-					// create 10-fold instances array
-					Instances[] tenFoldInstances = knn.createTenFoldInstances();
-					for (int i = 0; i < tenFoldInstances.length; i++){
-						if (weightingSchemes[scheme].equals("uniform")) {
-							// the weighting scheme is uniform
 
-						} else {
-							// the weighting scheme is weighted
-						}
-					}
-					double crossValidationError = knn.crossValidationError(data, 10);
+					double crossValidationError = knn.crossValidationError(lpDistance, k, weightingSchemes[scheme]);
 					if (crossValidationError < bestCrossValidationErr){
 						bestCrossValidationErr = crossValidationError;
 						bestK = k;

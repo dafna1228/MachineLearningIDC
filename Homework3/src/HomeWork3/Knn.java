@@ -4,6 +4,7 @@ import weka.classifiers.Classifier;
 import weka.core.Capabilities;
 import weka.core.Instance;
 import weka.core.Instances;
+import weka.core.InstanceComparator;
 
 class DistanceCalculator {
     /**
@@ -85,31 +86,52 @@ public class Knn implements Classifier {
      * @param instance
      * @return The instance predicted value.
      */
-    public double regressionPrediction(Instance instance) {
-        return 0.0;
+    public double regressionPrediction(Instance instance, Instances data, double k) {
+        double sumNeighbourValues = 0.0;
+        Instances neighbours = findNearestNeighbors(instance, data, k);
+        for (int i = 0; i < neighbours.numInstances(); i++) {
+            sumNeighbourValues += neighbours.instance(i).classValue();
+        }
+        return  (1.0 / k) * sumNeighbourValues;
     }
 
     /**
      * Caclcualtes the average error on a give set of instances.
      * The average error is the average absolute error between the target value and the predicted
      * value across all insatnces.
-     * @param insatnces
      * @return
      */
-    public double calcAvgError (Instances insatnces){
-
-        return 0.0;
+    public double calcAvgError (Instances trainingData, Instances validationData, double k){
+        //TODO: we need not to test error across all instances, only in 9/10 of it
+        double sumErrors = 0.0;
+        for (int i = 0; i < validationData.numInstances(); i++){
+            Instance instance = validationData.instance(i);
+            //TODO: does "average absolute error" means absolute on each instance or on the sum?
+            sumErrors += Math.abs(regressionPrediction(instance, trainingData, k) - instance.classValue());
+        }
+        return sumErrors / (double) validationData.numInstances();
     }
 
     /**
      * Calculates the cross validation error, the average error on all folds.
-     * @param insancesXFold Insances used for the cross validation
-     * @param validationIndex The number of folds to use.
      * @return The cross validation error.
      */
-    public double crossValidationError(Instances[] insancesXFold, int validationIndex){
+    public double crossValidationError(double lpDistance, double k, String weightingScheme){
+        double sumAvgErrors = 0.0;
+        // create 10-fold instances array
+        Instances[][] tenFoldInstances = createTenFoldInstances();
+        for (int i = 0; i < tenFoldInstances.length; i++){
+            Instances trainingData = tenFoldInstances[0][i];
+            Instances validationData = tenFoldInstances[1][i];
+            if (weightingScheme.equals("uniform")) {
+                // the weighting scheme is uniform
 
-        return 0.0;
+            } else {
+                // the weighting scheme is weighted
+            }
+            sumAvgErrors += calcAvgError(trainingData, validationData, k);
+        }
+        return sumAvgErrors;
     }
 
 
@@ -118,7 +140,9 @@ public class Knn implements Classifier {
      * @param instance
      */
     /* Collection of your choice */
-    public Instances findNearestNeighbors(Instance instance, int k) {
+    public Instances findNearestNeighbors(Instance instance, Instances data, double k) {
+        Instances neighbours = new Instances(data, 0);
+
         return null;
     }
 
@@ -142,18 +166,29 @@ public class Knn implements Classifier {
 
 
     // divide the data in m_trainingInstances to 10 equally sizes Instances objects in an array
-    public Instances[] createTenFoldInstances() {
-        Instances[] returnArr = new Instances[10];
+    public Instances[][] createTenFoldInstances() {
+        Instances[] trainingArr = new Instances[10];
+        Instances[] validationArr = new Instances[10];
+
         // init the instances
-        for (int i = 0; i < returnArr.length; i++){
-            returnArr[i] = new Instances(m_trainingInstances, 0);
+        for (int i = 0; i < trainingArr.length; i++){
+            trainingArr[i] = new Instances(m_trainingInstances, 0);
+            validationArr[i] = new Instances(m_trainingInstances, 0);
         }
         // populate the instances
-        for (int i = 0; i < m_trainingInstances.numInstances(); i++){
-            returnArr[i%10].add(m_trainingInstances.instance(i));
+        for (int i = 0; i < trainingArr.length; i++){
+            for (int j = 0; j < m_trainingInstances.numInstances(); j++){
+                // use modulu to equally divide 1/10 of the instances
+                if (j%10 == i) {
+                    trainingArr[i].add(m_trainingInstances.instance(j));
+                } else {
+                    validationArr[i].add(m_trainingInstances.instance(j));
+                }
+            }
         }
-        return returnArr;
+        return new Instances[][] {trainingArr, validationArr} ;
     }
+
 
     @Override
     public double[] distributionForInstance(Instance arg0) throws Exception {
