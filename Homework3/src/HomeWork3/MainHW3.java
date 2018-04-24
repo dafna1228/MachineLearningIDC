@@ -4,9 +4,10 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Random;
 
 import weka.core.Instances;
-
+import weka.filters.unsupervised.instance.Randomize;
 public class MainHW3 {
 
 	public static BufferedReader readDataFile(String filename) {
@@ -34,7 +35,7 @@ public class MainHW3 {
 		double bestLpDistance = 0.0;
 		double bestCrossValidationErr = Double.MAX_VALUE;
 		double bestWeightingScheme = 0.0;
-		double[] lpValues = {1.0, 2.0, 3.0, Double.MAX_VALUE};
+		double[] lpValues = {1.0, 2.0, 3.0, Double.POSITIVE_INFINITY};
 		String[] weightingSchemes = {"uniform","weighted"};
 
 		for (int k = 1; k < 21; k++){
@@ -49,6 +50,7 @@ public class MainHW3 {
 						bestCrossValidationErr = crossValidationError;
 						bestK = k;
 						bestLpDistance = lpDistance;
+						System.out.println("best scheme "+ weightingSchemes[scheme]);
 						bestWeightingScheme = ((weightingSchemes[scheme].equals("weighted")) ? 1.0 : 0.0);
 					}
 				}
@@ -61,10 +63,9 @@ public class MainHW3 {
 	public static void main(String[] args) throws Exception {
         //TODO: complete the Main method
 		Instances autoPrice = loadData("src\\HomeWork3\\auto_price.txt");
+		autoPrice.randomize(new Random());
 		FeatureScaler scaler = new FeatureScaler();
 		Instances autoPriceScaled = scaler.scaleData(autoPrice);
-		System.out.println(autoPriceScaled.firstInstance());
-		System.out.println(autoPriceScaled.lastInstance());
 		// find the best hyper parameters (K – number of neighbors, Lp distance measure, weighting scheme)
 		double[] lpValues = {1.0, 2.0, 3.0, Double.MAX_VALUE};
 		String[] weightingSchemes = {"uniform","weighted"};

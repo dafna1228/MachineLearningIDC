@@ -11,8 +11,12 @@ class DistanceCalculator {
     * We leave it up to you wheter you want the distance method to get all relevant
     * parameters(lp, efficient, etc..) or have it has a class variables.
     */
-    public double distance (Instance one, Instance two) {
-        return 0.0;
+    public double distance (Instance one, Instance two, double lpDistance) {
+        if (Double.isInfinite(lpDistance)){
+            return lInfinityDistance(one, two);
+        } else {
+            return lpDistance(one, two, lpDistance);
+        }
     }
 
     /**
@@ -20,8 +24,12 @@ class DistanceCalculator {
      * @param one
      * @param two
      */
-    private double lpDistance(Instance one, Instance two) {
-        return 0.0;
+    private double lpDistance(Instance one, Instance two, double lpDistance) {
+        double result = 0.0;
+        for (int i = 0; i< one.numAttributes() - 1; i++){
+            result += Math.pow(Math.abs(one.value(i) - two.value(i)), lpDistance);
+        }
+        return Math.pow(result, (1 / lpDistance));
     }
 
     /**
@@ -31,7 +39,13 @@ class DistanceCalculator {
      * @return
      */
     private double lInfinityDistance(Instance one, Instance two) {
-        return 0.0;
+        double maxResult = 0.0;
+        for (int i = 0; i < one.numAttributes() - 1; i++){
+            if (maxResult < Math.abs(one.value(i) - two.value(i))){
+                maxResult = Math.abs(one.value(i) - two.value(i));
+            }
+        }
+        return maxResult;
     }
 
     /**
@@ -101,30 +115,14 @@ public class Knn implements Classifier {
      * @return The instance predicted value.
      */
     public double regressionPrediction(Instance instance, Instances data) {
-        double sumNeighbourValues = 0.0;
-        double wieght = 1.0;
-        double sumWieght = 0.0;
-        //System.out.println("train in regressionPrediction: " + data.numInstances());
-
-        Instances neighbours = findNearestNeighbors(instance, data);
-        for (int i = 0; i < neighbours.numInstances(); i++) {
-            if (weightingScheme.equals("weighted")) {
-                // the weighting scheme is weighted, calc the weight of the instance
-                wieght = 1.0 / Math.pow(getLpDistance(instance, neighbours.instance(i)), 2);
-                sumWieght += wieght;
-            }
-            sumNeighbourValues += (neighbours.instance(i).classValue()) * wieght;
-        }
-
+        // get the prediction using a calculated average
         if (weightingScheme.equals("weighted")) {
-            // the weighting scheme is weighted, calc the weight of the instance
-            return sumNeighbourValues / sumWieght;
+            return getWeightedAverageValue(data, instance);
         } else {
-            // uniform
-            return (1.0 / k) * sumNeighbourValues;
-
+            return getAverageValue(data, instance);
         }
     }
+
 
     /**
      * Caclcualtes the average error on a give set of instances.
@@ -136,7 +134,6 @@ public class Knn implements Classifier {
         double sumErrors = 0.0;
         for (int i = 0; i < validationData.numInstances(); i++){
             Instance instance = validationData.instance(i);
-            //TODO: does "average absolute error" means absolute on each instance or on the sum?
             sumErrors += Math.abs(regressionPrediction(instance, trainingData) - instance.classValue());
         }
         return sumErrors / (double) validationData.numInstances();
@@ -157,11 +154,9 @@ public class Knn implements Classifier {
         for (int i = 0; i < 10; i++){
             Instances trainingData = tenFoldInstances[0][i];
             Instances validationData = tenFoldInstances[1][i];
-            //System.out.println(i + ": train: " + trainingData.numInstances());
-
             sumAvgErrors += calcAvgError(trainingData, validationData);
         }
-        return sumAvgErrors;
+        return sumAvgErrors / 10.0;
     }
 
 
@@ -171,7 +166,6 @@ public class Knn implements Classifier {
      */
     /* Collection of your choice */
     public Instances findNearestNeighbors(Instance instance, Instances data) {
-        //System.out.println("IN FNN: "+data.numInstances());
         Instances neighbours = new Instances(data, 0);
         Instances tempData = new Instances(data);
         // get the closes neighbour from data, add it to neighbours and remove it from data, k times
@@ -180,7 +174,8 @@ public class Knn implements Classifier {
             int closesNeighbour = Integer.MAX_VALUE;
             double closesNeighbourDistance = Double.MAX_VALUE;
             for (int j = 0; j < tempData.numInstances(); j++){
-                double tempNeighbourDistance = getLpDistance(instance, tempData.instance(j));
+                DistanceCalculator distance = new DistanceCalculator();
+                double tempNeighbourDistance =  distance.distance(instance, tempData.instance(j), lpDistance);
                 if (tempNeighbourDistance < closesNeighbourDistance){
                     closesNeighbour = j;
                     closesNeighbourDistance = tempNeighbourDistance;
@@ -197,8 +192,13 @@ public class Knn implements Classifier {
      * @param
      * @return
      */
-    public double getAverageValue (/* Collection of your choice */) {
-        return 0.0;
+    public double getAverageValue (Instances data, Instance instance) {
+        double sumNeighbourValues = 0.0;
+        Instances neighbours = findNearestNeighbors(instance, data);
+        for (int i = 0; i < neighbours.numInstances(); i++) {
+            sumNeighbourValues += (neighbours.instance(i).classValue());
+        }
+        return (1.0 / k) * sumNeighbourValues;
     }
 
     /**
@@ -206,8 +206,24 @@ public class Knn implements Classifier {
      * with respect to their distance from a specific instance.
      * @return
      */
-    public double getWeightedAverageValue(/* Collection of your choice */) {
-        return 0.0;
+    public double getWeightedAverageValue(Instances data, Instance instance) {
+        double sumNeighbourValues = 0.0;
+        double wieght;
+        double sumWieght = 0.0;
+        Instances neighbours = findNearestNeighbors(instance, data);
+        for (int i = 0; i < neighbours.numInstances(); i++) {
+                // the weighting scheme is weighted, calc the weight of the instance
+                DistanceCalculator distanceCalc = new DistanceCalculator();
+                double distance = distanceCalc.distance(instance, neighbours.instance(i), lpDistance);
+                wieght = 1.0 / Math.pow(distance, 2);
+                if (Double.isInfinite(wieght)) {
+                    wieght = instance.classValue();
+                }
+                sumWieght += wieght;
+            sumNeighbourValues += (neighbours.instance(i).classValue()) * wieght;
+        }
+        return sumNeighbourValues / sumWieght;
+
     }
 
 
@@ -234,29 +250,6 @@ public class Knn implements Classifier {
         }
         return new Instances[][] {trainingArr, validationArr} ;
     }
-
-    public double getLpDistance(Instance instance1, Instance instance2) {
-        double result = 0.0;
-        // case for lpDistance = infinity
-        if (lpDistance == Double.MAX_VALUE){
-            double maxResult = 0.0;
-            for (int i = 0; i< instance1.numAttributes() - 1; i++){
-                if (maxResult < Math.abs(instance1.value(i) - instance2.value(i))){
-                    maxResult = Math.abs(instance1.value(i) - instance2.value(i));
-                }
-            }
-            result = maxResult;
-        } else {
-            for (int i = 0; i< instance1.numAttributes() - 1; i++){
-                //TODO: wer'e supposed do sum "the dimension of the vector", does this include class value?
-                result += Math.pow(Math.abs(instance1.value(i) - instance2.value(i)), lpDistance);
-            }
-            result = Math.pow(result, (1 / lpDistance));
-        }
-
-        return result;
-    }
-
 
 
         @Override
