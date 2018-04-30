@@ -48,6 +48,7 @@ class DistanceCalculator {
         return maxResult;
     }
 
+
     /**
      * Returns the Lp distance between 2 instances, while using an efficient distance check.
      * @param one
