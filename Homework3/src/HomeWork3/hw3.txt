@@ -12,3 +12,11 @@ so having the values scaled would not give us more accurate results
 
 2.	In class we saw we can perform an edited kNN algorihtm which used either backward or forward kNN to filter out instances.
 Could we use this procedure for our dataset? If so explain how, if not explain why.
+
+We shouldn't use this procedure on our dataset, because the class feature has too many values.
+because the amount of possible values is very big, there are many bounderies -> we will need a lot of instances,
+in order to "define" these bounderies, and not a lot of instances will be removed.
+Also, looking at the Algorithm, because the amount of class values is big, the chances that an instance will be
+classified correctly are lower, so again- not alot of instances will be removed from the dataset,
+making this algorithm kinda useless.
+
